@@ -3,8 +3,10 @@ const { ipKeyGenerator } = rateLimit;
 const RedisStore = require("rate-limit-redis").default;
 const redis = require("../lib/redis");
 
+const useRedisRateLimitStore = String(process.env.RATE_LIMIT_REDIS || "").toLowerCase() === "true";
+
 function getStore(prefix) {
-  if (!redis) {
+  if (!redis || !useRedisRateLimitStore) {
     return undefined;
   }
 

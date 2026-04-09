@@ -13,6 +13,9 @@ const { cacheMiddleware } = require("./middleware/redisCache");
 
 const app = express();
 
+// Vercel sits behind a proxy and forwards client IP headers.
+app.set("trust proxy", 1);
+
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
