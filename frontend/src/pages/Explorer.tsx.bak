@@ -1,0 +1,255 @@
+import { useState } from "react";
+import { MapPin, ChevronRight, Search as SearchIcon, Users } from "lucide-react";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+ import { useEffect } from "react";
+import { fetchStates, fetchDistricts, fetchSubDistricts, fetchVillages } from "@/lib/api";
+
+export default function Explorer() {
+  const [statesList, setStatesList] = useState<any[]>([]);
+  const [districtsList, setDistrictsList] = useState<any[]>([]);
+  const [subDistrictsList, setSubDistrictsList] = useState<any[]>([]);
+  const [villagesList, setVillagesList] = useState<any[]>([]);
+
+  // Baki pura purana state aise hi rakho:
+  const [selectedState, setSelectedState] = useState<string | null>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
+  const [selectedSubDistrict, setSelectedSubDistrict] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  // Page khulte hi (on mount) States lao:
+  useEffect(() => {
+    fetchStates().then(data => setStatesList(data)).catch(console.error);
+  }, []);
+
+  // Jaise hi State Update ho (onChange), Districts ki API chalao:
+  const handleStateChange = (id: string) => {
+    setSelectedState(id);
+    setSelectedDistrict(null);
+    setSelectedSubDistrict(null);
+    setDistrictsList([]); 
+    setSubDistrictsList([]);
+    setVillagesList([]);
+    
+    fetchDistricts(id).then(data => setDistrictsList(data)).catch(console.error);
+  };
+  
+... // aise hi DistrictSelect aur SubDistrict select ke change functions update honge.
+export default function Explorer() {
+  const [selectedState, setSelectedState] = useState<number | null>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState<number | null>(null);
+  const [selectedSubDistrict, setSelectedSubDistrict] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+
+  const currentDistricts = selectedState ? districts[selectedState] || [] : [];
+  const currentSubDistricts = selectedDistrict ? subDistricts[selectedDistrict] || [] : [];
+  const currentVillages = selectedSubDistrict ? villages[selectedSubDistrict] || [] : [];
+
+  const filteredVillages = currentVillages.filter((v) =>
+    v.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleStateChange = (val: string) => {
+    setSelectedState(Number(val));
+    setSelectedDistrict(null);
+    setSelectedSubDistrict(null);
+  };
+
+  const handleDistrictChange = (val: string) => {
+    setSelectedDistrict(Number(val));
+    setSelectedSubDistrict(null);
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+
+      <div className="container py-10 flex-1">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              <div className="hero-gradient p-2 rounded-lg">
+                <MapPin className="h-6 w-6 text-primary-foreground" />
+              </div>
+              Location Data Explorer
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Browse through states, districts, sub-districts, and villages using cascading filters.
+            </p>
+          </div>
+
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-1 text-sm text-muted-foreground mb-6 flex-wrap">
+            <span className={selectedState ? "text-primary cursor-pointer" : "font-medium text-foreground"} onClick={() => { setSelectedState(null); setSelectedDistrict(null); setSelectedSubDistrict(null); }}>
+              India
+            </span>
+            {selectedState && (
+              <>
+                <ChevronRight className="h-4 w-4" />
+                <span className={selectedDistrict ? "text-primary cursor-pointer" : "font-medium text-foreground"} onClick={() => { setSelectedDistrict(null); setSelectedSubDistrict(null); }}>
+                  {states.find((s) => s.id === selectedState)?.name}
+                </span>
+              </>
+            )}
+            {selectedDistrict && (
+              <>
+                <ChevronRight className="h-4 w-4" />
+                <span className={selectedSubDistrict ? "text-primary cursor-pointer" : "font-medium text-foreground"} onClick={() => setSelectedSubDistrict(null)}>
+                  {currentDistricts.find((d) => d.id === selectedDistrict)?.name}
+                </span>
+              </>
+            )}
+            {selectedSubDistrict && (
+              <>
+                <ChevronRight className="h-4 w-4" />
+                <span className="font-medium text-foreground">
+                  {currentSubDistricts.find((s) => s.id === selectedSubDistrict)?.name}
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Filters */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <Select onValueChange={handleStateChange} value={selectedState?.toString()}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select State" />
+              </SelectTrigger>
+              <SelectContent>
+                {states.map((s) => (
+                  <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select onValueChange={handleDistrictChange} value={selectedDistrict?.toString()} disabled={!selectedState || currentDistricts.length === 0}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select District" />
+              </SelectTrigger>
+              <SelectContent>
+                {currentDistricts.map((d) => (
+                  <SelectItem key={d.id} value={d.id.toString()}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select onValueChange={(val) => setSelectedSubDistrict(Number(val))} value={selectedSubDistrict?.toString()} disabled={!selectedDistrict || currentSubDistricts.length === 0}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select Sub-District" />
+              </SelectTrigger>
+              <SelectContent>
+                {currentSubDistricts.map((s) => (
+                  <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Search villages */}
+          {selectedSubDistrict && (
+            <div className="relative mb-6">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search villages..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          )}
+
+          {/* Results */}
+          {!selectedState && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {states.map((s) => (
+                <div
+                  key={s.id}
+                  className="glass-card rounded-xl p-4 cursor-pointer hover:-translate-y-0.5 transition-all"
+                  onClick={() => handleStateChange(s.id.toString())}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold">{s.name}</div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        {s.districts} districts · {s.villages.toLocaleString()} villages
+                      </div>
+                    </div>
+                    <Badge variant="secondary">{s.code}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {selectedState && !selectedDistrict && currentDistricts.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {currentDistricts.map((d) => (
+                <div
+                  key={d.id}
+                  className="glass-card rounded-xl p-4 cursor-pointer hover:-translate-y-0.5 transition-all"
+                  onClick={() => handleDistrictChange(d.id.toString())}
+                >
+                  <div className="font-semibold">{d.name}</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    {d.subDistricts} sub-districts · {d.villages.toLocaleString()} villages
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {selectedState && !selectedDistrict && currentDistricts.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <MapPin className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p>District data not available for this state in mock data.</p>
+              <p className="text-sm mt-1">Try selecting Andhra Pradesh, Maharashtra, or Uttar Pradesh.</p>
+            </div>
+          )}
+
+          {selectedDistrict && !selectedSubDistrict && currentSubDistricts.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {currentSubDistricts.map((s) => (
+                <div
+                  key={s.id}
+                  className="glass-card rounded-xl p-4 cursor-pointer hover:-translate-y-0.5 transition-all"
+                  onClick={() => setSelectedSubDistrict(s.id)}
+                >
+                  <div className="font-semibold">{s.name}</div>
+                  <div className="text-sm text-muted-foreground mt-1">{s.villages} villages</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {selectedSubDistrict && (
+            <div className="space-y-2">
+              {filteredVillages.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">No villages found.</div>
+              ) : (
+                filteredVillages.map((v) => (
+                  <div key={v.id} className="glass-card rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 p-2 rounded-lg">
+                        <MapPin className="h-4 w-4 text-primary" />
+                      </div>
+                      <span className="font-medium">{v.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Users className="h-3.5 w-3.5" />
+                      {v.population.toLocaleString()}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Footer />
+    </div>
+  );
+}
