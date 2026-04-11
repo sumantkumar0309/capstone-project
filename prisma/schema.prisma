@@ -79,6 +79,8 @@ model State {
   countryId String
   country   Country    @relation(fields: [countryId], references: [id])
   districts District[]
+
+  @@index([name], map: "idx_state_name")
 }
 
 model District {
@@ -88,6 +90,9 @@ model District {
   stateId      String
   state        State         @relation(fields: [stateId], references: [id])
   subDistricts SubDistrict[]
+
+  @@index([name], map: "idx_district_name")
+  @@index([stateId], map: "idx_district_state_id")
 }
 
 model SubDistrict {
@@ -97,6 +102,8 @@ model SubDistrict {
   districtId String
   district   District  @relation(fields: [districtId], references: [id])
   villages   Village[]
+
+  @@index([districtId], map: "idx_subdistrict_district_id")
 }
 
 model Village {
@@ -105,4 +112,7 @@ model Village {
   code          Int         @unique
   subDistrictId String
   subDistrict   SubDistrict @relation(fields: [subDistrictId], references: [id])
+
+  @@index([name], map: "idx_village_name")
+  @@index([subDistrictId], map: "idx_village_subdistrict_id")
 }

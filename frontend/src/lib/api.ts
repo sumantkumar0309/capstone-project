@@ -1,38 +1,61 @@
-const API_BASE_URL = "http://localhost:4000/api/b2b/locations";
+type LocationRecord = {
+  id: string;
+  name: string;
+  code: number;
+};
 
-// Yeh function fetch helper hai
-const fetchData = async (url: string) => {
+type ApiResponse<T> = {
+  success?: boolean;
+  data?: T;
+  message?: string;
+};
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api/b2b/locations").replace(/\/+$/, "");
+const API_KEY = import.meta.env.VITE_API_KEY;
+const API_SECRET = import.meta.env.VITE_API_SECRET;
+
+function getAuthHeaders() {
+  if (!API_KEY || !API_SECRET) {
+    throw new Error("Missing VITE_API_KEY or VITE_API_SECRET in frontend environment");
+  }
+
+  return {
+    "x-api-key": API_KEY,
+    "x-api-secret": API_SECRET,
+  };
+}
+
+async function fetchData(path: string): Promise<LocationRecord[]> {
   try {
-    const res = await fetch(url, {
-      headers: {
-        "x-api-key": "test_key", // Yeh backend mein seed kiye gaye apikeys hain agar secure nahi kiya hai ya backend test key allow karta hai
-        "x-api-secret": "test_secret"
-      }
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: getAuthHeaders(),
     });
-    if (!res.ok) {
-        throw new Error("HTTP error " + res.status);
+
+    const body = (await response.json()) as ApiResponse<LocationRecord[]>;
+
+    if (!response.ok) {
+      throw new Error(body.message || `HTTP ${response.status}`);
     }
-    const json = await res.json();
-    // Return data property because backend usually sends { success: true, count: X, data: [...] }
-    return json.data || json;
-  } catch (err) {
-    console.error("API error:", err);
+
+    return Array.isArray(body.data) ? body.data : [];
+  } catch (error) {
+    console.error(`API error for ${path}:`, error);
     return [];
   }
-};
+}
 
-export const fetchStates = async () => {
-  return await fetchData(`${API_BASE_URL}/states`);
-};
+export async function fetchStates() {
+  return fetchData("/states");
+}
 
-export const fetchDistricts = async (stateId: string) => {
-  return await fetchData(`${API_BASE_URL}/states/${stateId}/districts`);
-};
+export async function fetchDistricts(stateId: string) {
+  return fetchData(`/states/${stateId}/districts`);
+}
 
-export const fetchSubDistricts = async (districtId: string) => {
-  return await fetchData(`${API_BASE_URL}/districts/${districtId}/subdistricts`);
-};
+export async function fetchSubDistricts(districtId: string) {
+  return fetchData(`/districts/${districtId}/subdistricts`);
+}
 
-export const fetchVillages = async (subDistrictId: string) => {
-  return await fetchData(`${API_BASE_URL}/subdistricts/${subDistrictId}/villages`);
-};
+export async function fetchVillages(subDistrictId: string) {
+  return fetchData(`/subdistricts/${subDistrictId}/villages`);
+}

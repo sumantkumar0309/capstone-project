@@ -33,7 +33,7 @@ router.get("/states/:stateId/districts", cacheMiddleware(3600), async (req, res,
 });
 
 // 3. Get sub-districts by district
-router.get("/districts/:districtId/subdistricts", async (req, res, next) => {
+router.get("/districts/:districtId/subdistricts", cacheMiddleware(3600), async (req, res, next) => {
   try {
     const { districtId } = req.params;
     const subDistricts = await prisma.subDistrict.findMany({
@@ -48,7 +48,7 @@ router.get("/districts/:districtId/subdistricts", async (req, res, next) => {
 });
 
 // 4. Get villages by sub-district
-router.get("/subdistricts/:subDistrictId/villages", async (req, res, next) => {
+router.get("/subdistricts/:subDistrictId/villages", cacheMiddleware(3600), async (req, res, next) => {
   try {
     const { subDistrictId } = req.params;
     const villages = await prisma.village.findMany({
@@ -63,31 +63,65 @@ router.get("/subdistricts/:subDistrictId/villages", async (req, res, next) => {
 });
 
 // 5. Autocomplete Search API
-router.get("/search", async (req, res, next) => {
+router.get("/search", cacheMiddleware(900), async (req, res, next) => {
   try {
-    const { q } = req.query;
-    if (!q || q.length < 3) {
+    const q = String(req.query.q || "").trim();
+    if (q.length < 3) {
       return res.status(400).json({ success: false, message: "Query string 'q' must be at least 3 characters long" });
     }
 
-    const results = await prisma.village.findMany({
+    const requestedLimit = Number(req.query.limit || 10);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(Math.floor(requestedLimit), 1), 25)
+      : 10;
+
+    const villageSelect = {
+      id: true,
+      name: true,
+      code: true,
+      subDistrict: {
+        select: {
+          name: true,
+          district: {
+            select: {
+              name: true,
+              state: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    // startsWith is generally faster than contains on large datasets.
+    let results = await prisma.village.findMany({
       where: {
         name: {
-          contains: String(q),
+          startsWith: q,
           mode: 'insensitive'
         }
       },
-      take: 10,
-      include: {
-        subDistrict: {
-          include: {
-            district: {
-              include: { state: true }
-            }
-          }
-        }
-      }
+      orderBy: { name: 'asc' },
+      take: limit,
+      select: villageSelect,
     });
+
+    if (!results.length && q.length >= 4) {
+      results = await prisma.village.findMany({
+        where: {
+          name: {
+            contains: q,
+            mode: 'insensitive',
+          },
+        },
+        orderBy: { name: 'asc' },
+        take: limit,
+        select: villageSelect,
+      });
+    }
 
     const formattedResults = results.map(v => ({
       id: v.id,
